@@ -1,6 +1,8 @@
 const express = require('express')
+const bcrypt = require('bcrypt')
 const connectDB = require('./config/connection');
 const User = require('./models/user');
+const { validateSignUpData } = require('./utils/validation');
 const app = express();
 
 app.use(express.json())
@@ -14,7 +16,7 @@ app.get('/feed', async (req, res) => {
             res.status(200).send(user);
         }
     }catch(error){
-        res.status(400).send('Error while fetching feed' , error)
+        res.status(400).send('Error while fetching feed' + error)
 
     }
 });
@@ -29,20 +31,33 @@ app.get('/user', async (req, res) => {
             res.status(200).send(user)
         }
     }catch(error){
-        res.status(400).send('Error while fetching ' , error)
+        res.status(400).send('Error while fetching ' + error)
 
     }
 })
 
 app.post('/signUp', async ( req, res ) => {
     
-    const user = new User(req.body);
+    
 
     try{
+        
+        validateSignUpData(req);
+        const { firstName, lastName, password, email} = req.body
+        const hashedPassword = await bcrypt.hash(password, 12);
+        console.log(hashedPassword)
+        const user = new User({
+            firstName, 
+            lastName,
+            email, 
+            password: hashedPassword
+        })
+        console.log(user)
+
         await user.save();
         res.status(200).send('SuccessFully added the user to the database')
     }catch(error){
-        res.status(400).send('Error while inserting in database' , error)
+        res.status(400).send('Error while inserting in database' + error.message)
     }
 })
 app.delete('/deleteById', async ( req, res ) => {
@@ -52,7 +67,7 @@ app.delete('/deleteById', async ( req, res ) => {
         console.log(user)
         res.status(200).send('deleted successfully')
     }catch(error){
-        res.status(400).send('Error while deleting' , error)
+        res.status(400).send('Error while deleting' + error)
     }
 })
 app.delete('/deleteByEmail', async ( req, res ) => {
@@ -63,7 +78,7 @@ app.delete('/deleteByEmail', async ( req, res ) => {
         console.log(user)
         res.status(200).send('deleted successfully')
     }catch(error){
-        res.status(400).send('Error while deleting' , error)
+        res.status(400).send('Error while deleting' + error)
     }
 })
 app.patch('/updateUser', async ( req, res ) => {
@@ -73,12 +88,10 @@ app.patch('/updateUser', async ( req, res ) => {
         console.log(email)
         const user = await User.findOneAndUpdate({email:email},data, {returnDocument: 'after'})
         console.log(user)
-        if(user.length ===0){
-            res.status(400).send('not found')
-        }
+        
         res.status(200).send('updated successfully')
     }catch(error){
-        res.status(400).send('Error while updating')
+        res.status(400).send('Error while updating'+error)
     }
 })
 connectDB()
